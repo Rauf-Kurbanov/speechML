@@ -2,7 +2,7 @@
 
 Implement a script (preferably python) for duplicating audio data directori and adding background noise.
 
-You can use the noise available at <coming soon> (bg_noise.tar.gz)
+You can use the noise available at https://yadi.sk/d/ZR5JdkhO3SPoLN (bg_noise.tar.gz)
 
      ================= NOISE TO BE ADDED DATA ================ #
      noise_root = 'bg_noise/'
