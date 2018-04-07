@@ -8,6 +8,8 @@ import scipy.io.wavfile as wav
 from laughter_classification.utils import chunks, in_any, interv_to_range, get_sname
 
 from laughter_prediction.sample_audio import sample_wav_by_time
+from laughter_prediction.feature_extractors import FeatureExtractor
+
 
 
 class SSPNetDataSampler:
@@ -23,13 +25,14 @@ class SSPNetDataSampler:
         labels = pd.read_csv(labels_path, names=def_cols, engine='python', skiprows=1)
         return labels
 
-    def __init__(self, corpus_root):
+    def __init__(self, corpus_root=''):
         self.sample_rate = 16000
         self.duration = 11
         self.default_len = self.sample_rate * self.duration
         self.data_dir = join(corpus_root, "data")
         labels_path = join(corpus_root, "labels.txt")
         self.labels = self.read_labels(labels_path)
+
 
     @staticmethod
     def most(l):
@@ -58,6 +61,10 @@ class SSPNetDataSampler:
         frame_size = int(self.sample_rate * frame_sec)
         is_laughter = np.array([self.most(la) for la in chunks(laught_along, frame_size)])
 
+        frame_step = int(frame_size / 5)
+
+        is_laughter = [self.most(laught_along[i: i + frame_size])
+                    for i in range(0, self.default_len - frame_size, frame_step)]
         df = pd.DataFrame({'IS_LAUGHTER': is_laughter,
                            'SNAME': sname})
         return df
@@ -71,7 +78,9 @@ class SSPNetDataSampler:
         """
         data = sample_wav_by_time(wav_path, frame_sec)
         labels = self.get_labels_for_file(wav_path, frame_sec)
-        df = pd.concat([data, labels], axis=1)
+        f = FeatureExtractor(frame_sec).extract_features(wav_path=wav_path)
+
+        df = pd.concat([f, labels], axis=1)
         return df
 
     def get_valid_wav_paths(self):
@@ -91,11 +100,6 @@ class SSPNetDataSampler:
         fullpaths = self.get_valid_wav_paths()[:naudio]
         dataframes = [self.df_from_file(wav_path, frame_sec) for wav_path in fullpaths]
         df = pd.concat(dataframes)
-
-        colnames = ["V{}".format(i) for i in range(df.shape[1] - 2)]
-        colnames.append("IS_LAUGHTER")
-        colnames.append("SNAME")
-        df.columns = colnames
 
         if save_path is not None:
             if not os.path.isfile(save_path) or force_save:
